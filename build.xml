@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!--
+    TODO:
+            - Create javadocs
+-->
+
+<project name="plenix" basedir="." default="usage">
+    <property file="deployment.properties"/>
+
+    <property name="nombre" value="plenix"/>
+
+    <property name="src.dir" value="src"/>
+	<property name="src.java.dir" value="${src.dir}/java"/>
+
+    <property name="lib.dir" value="lib"/>
+	<property name="aopalliance.jar" value="aopalliance.jar"/>
+	<property name="asm.jar" value="asm-1.4.3.jar"/>
+	<property name="asm-attrs.jar" value="asm-attrs-1.4.3.jar"/>
+	<property name="asm-util.jar" value="asm-util-1.4.3.jar"/>
+	<property name="bsf.jar" value="bsf-2.3.0-rc1.jar"/>
+	<property name="cglib.jar" value="cglib-full-2.0.2.jar"/>
+	<property name="classworlds.jar" value="classworlds-1.0.jar"/>
+	<property name="commons-cli.jar" value="commons-cli-1.0.jar"/>
+	<property name="commons-collections.jar" value="commons-collections-3.0-dev2.jar"/>
+	<property name="commons-dbcp.jar" value="commons-dbcp-1.2.1.jar"/>
+	<property name="commons-logging.jar" value="commons-logging-1.0.3.jar"/>
+	<property name="commons-pool.jar" value="commons-pool.jar"/>
+	<property name="dom4j.jar" value="dom4j.jar"/>
+	<property name="groovy.jar" value="groovy-1.0-beta-7.jar"/>
+	<property name="hibernate.jar" value="hibernate2.jar"/>
+	<property name="jta.jar" value="jta.jar"/>
+	<property name="jstl.jar" value="jstl.jar"/>
+	<property name="log4j.jar" value="log4j.jar"/>
+	<property name="odmg.jar" value="odmg-3.0.jar"/>
+	<property name="oracle.jar" value="classes12.jar"/>
+	<property name="postgres.jar" value="pg74.214.jdbc2ee.jar"/>
+	<property name="regexp.jar" value="regexp-1.2.jar"/>
+	<property name="servlet.jar" value="servlet-api.jar"/>
+	<property name="spring.jar" value="spring.jar"/>
+	<property name="tidy.jar" value="Tidy.jar"/>
+	<property name="standard.jar" value="standard.jar"/>
+
+	<property name="plenix.jar" value="plenix.jar"/>
+
+
+    <property name="jar" value="${nombre}.jar"/>
+	
+    <property name="test.dir" value="test"/>
+
+	<property name="build.dir" value="build"/>
+	<property name="build.classes.dir" value="${build.dir}/classes"/>
+	
+	<path id="base-classpath">
+        <fileset dir="${lib.dir}">
+            <include name="${aopalliance.jar}"/>
+            <include name="${asm.jar}"/>
+            <include name="${asm-attrs.jar}"/>
+            <include name="${asm-util.jar}"/>
+            <include name="${bsf.jar}"/>
+            <include name="${cglib.jar}"/>
+            <include name="${classworlds.jar}"/>
+            <include name="${commons-cli.jar}"/>
+            <include name="${commons-collections.jar}"/>
+            <include name="${commons-dbcp.jar}"/>
+            <include name="${commons-logging.jar}"/>
+            <include name="${commons-pool.jar}"/>
+            <include name="${dom4j.jar}"/>
+            <include name="${groovy.jar}"/>
+            <include name="${hibernate.jar}"/>
+            <include name="${jta.jar}"/>
+            <include name="${log4j.jar}"/>
+            <include name="${odmg.jar}"/>
+            <include name="${regexp.jar}"/>
+            <include name="${servlet.jar}"/>
+            <include name="${spring.jar}"/>
+        </fileset>
+    </path>
+
+    <target name="usage">
+        <echo message=""/>
+        <echo message="${nombre} build file"/>
+        <echo message="-----------------------------------"/>
+        <echo message=""/>
+        <echo message="Targets:"/>
+        <echo message=""/>
+        <echo message="jar                --> Build ${name} jar"/>
+        <echo message="test-dbcopier      --> Test DBCopier"/>
+        <echo message="translate-dbcopier --> Translate DBCopier test script"/>
+        <echo message=""/>
+    </target>
+	
+    <target name="jar" depends="compile">
+        <jar destfile="${build.dir}/${jar}">
+            <fileset dir="${build.classes.dir}">
+                <include name="**/*.*"/>
+            </fileset>
+        </jar>
+    </target>
+
+    <target name="compile">
+        <mkdir dir="${build.classes.dir}"/>
+        <javac destdir="${build.classes.dir}"
+        	   target="1.5" source="1.5" debug="true"
+               deprecation="false" optimize="false" failonerror="true">
+            <src path="${src.java.dir}"/>
+            <classpath refid="base-classpath"/>
+        </javac>
+    </target>
+
+	<target name="test-dbcopier" depends="jar">
+		<java fork="yes" classname="plenix.tools.dbcopier.Main" dir="${test.dir}">
+			<arg value="dbcopier.xml"/>
+			<classpath>
+				<pathelement path="${test.dir}"/>
+                <fileset dir="${build.dir}">
+                    <include name="${jar}"/>
+                </fileset>
+                <fileset dir="${lib.dir}">
+                    <include name="${commons-collections.jar}"/>
+                    <include name="${commons-dbcp.jar}"/>
+                    <include name="${commons-pool.jar}"/>
+                    <include name="${oracle.jar}"/>
+                    <include name="${postgres.jar}"/>
+                </fileset>
+	            <path refid="base-classpath"/>
+			</classpath>
+		</java>
+	</target>
+	
+	<target name="translate-dbcopier">
+        <xslt in="${test.dir}/dbcopier.xml"
+              out="${test.dir}/dbcopier-beans.xml"
+              style="${src.java.dir}/plenix/tools/dbcopier/DBCopier.xsl"/>
+        <java fork="yes" classname="org.w3c.tidy.Tidy" dir="${test.dir}">
+            <arg value="--xml"/>
+            <!-- <arg value="- -latin1"/> -->
+            <arg value="--indent"/>
+            <arg value="--modify"/>
+            <arg value="--wrap"/>
+            	<arg value="256"/>
+            <arg value="--numeric"/>
+            <arg value="--quiet"/>
+            <arg value="dbcopier-beans.xml"/>
+            <classpath>
+                <pathelement location="${lib.dir}/${tidy.jar}"/>
+            </classpath>
+        </java>
+	</target>
+
+    <target name="junit" depends="compile" description="Run JUnit Tests">
+        <junit printsummary="on"
+               fork="false"
+               haltonfailure="false"
+               failureproperty="tests.failed"
+               showoutput="true">
+            <classpath refid="base-classpath"/>
+            <formatter type="brief" usefile="false"/>
+
+            <batchtest>
+                <fileset dir="${build.classes.dir}">
+                    <include name="**/Test*.*"/>
+                </fileset>
+            </batchtest>
+
+        </junit>
+
+        <fail if="tests.failed">
+        ***********************************************************
+        ***********************************************************
+        ****  Uno o más tests fallaron!  Chequee los logs ...  ****
+        ***********************************************************
+        ***********************************************************
+        </fail>
+    </target>
+        
+</project>
